@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to verify
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  LIBSPNG_VERSION: 0.7.4
+  ZLIB_VERSION: 1.3.2
+
+jobs:
+  natives-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 22
+          cache: maven
+      - name: Install build tools
+        run: brew install cmake ninja
+      - name: Fetch sources
+        run: |
+          mkdir -p build
+          curl -sfL "https://github.com/randy408/libspng/archive/refs/tags/v${LIBSPNG_VERSION}.tar.gz" | tar xz -C build
+          curl -sfL "https://github.com/madler/zlib/archive/refs/tags/v${ZLIB_VERSION}.tar.gz" | tar xz -C build
+      - name: Build natives
+        run: build-natives/macos-arm64.sh
+      - name: Test
+        run: mvn -B clean install
+      - uses: actions/upload-artifact@v7
+        with:
+          name: natives-macos-arm64
+          path: natives/src/main/resources/libspng-natives/macos-arm64/
+          if-no-files-found: error
+
+  natives-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 22
+          cache: maven
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: >-
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            curl
+      - name: Fetch sources
+        run: |
+          mkdir -p build
+          curl -sfL "https://github.com/randy408/libspng/archive/refs/tags/v${LIBSPNG_VERSION}.tar.gz" | tar xz -C build
+          curl -sfL "https://github.com/madler/zlib/archive/refs/tags/v${ZLIB_VERSION}.tar.gz" | tar xz -C build
+      - name: Build natives
+        run: ./build-natives/windows-x64.sh
+      - name: Test
+        shell: pwsh
+        run: mvn -B clean install
+      - uses: actions/upload-artifact@v7
+        with:
+          name: natives-windows-x64
+          path: natives/src/main/resources/libspng-natives/windows-x64/
+          if-no-files-found: error
+
+  natives-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 22
+          cache: maven
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build patchelf
+      - name: Fetch sources
+        run: |
+          mkdir -p build
+          curl -sfL "https://github.com/randy408/libspng/archive/refs/tags/v${LIBSPNG_VERSION}.tar.gz" | tar xz -C build
+          curl -sfL "https://github.com/madler/zlib/archive/refs/tags/v${ZLIB_VERSION}.tar.gz" | tar xz -C build
+      - name: Build natives
+        run: build-natives/linux-x64.sh
+      - name: Test
+        run: mvn -B clean install
+      - uses: actions/upload-artifact@v7
+        with:
+          name: natives-linux-x64
+          path: natives/src/main/resources/libspng-natives/linux-x64/
+          if-no-files-found: error
