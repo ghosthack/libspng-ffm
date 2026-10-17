@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Optional version to build the dry-run bundle as (not committed)
+        description: Release (non-SNAPSHOT) version to build the dry-run bundle as, e.g. 0.7.4-0.1.0-dryrun; required while the POMs are a SNAPSHOT (not committed)
         required: false
         type: string
 
