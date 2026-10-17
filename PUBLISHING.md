@@ -21,5 +21,5 @@ Central rejects it with "Bundle has content that does NOT have a .pom file".
 To inspect the signed bundle CI would upload, run the Release workflow
 manually (optionally with a throwaway `version`). It builds the natives on all
 three platforms, then builds the bundle against an unreachable Central URL with
-placeholder credentials and attaches `central-bundle.zip` as a workflow
+placeholder credentials (unsigned if `GPG_PRIVATE_KEY` is not set) and attaches `central-bundle.zip` as a workflow
 artifact; nothing is published.

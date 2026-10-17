@@ -128,13 +128,19 @@ jobs:
           if [[ -n "$DRY_RUN_VERSION" ]]; then
             ./mvnw -B -q versions:set -DnewVersion="$DRY_RUN_VERSION" -DgenerateBackupPoms=false
           fi
+          SIGN_ARGS=()
+          if [[ "$HAS_GPG_KEY" != "true" ]]; then
+            echo "::warning::GPG_PRIVATE_KEY is not set; building an unsigned bundle"
+            SIGN_ARGS=(-Dgpg.skip=true)
+          fi
           # skipPublishing would also skip bundling, so let the upload fail
           # against an unreachable URL instead and keep the bundle it built.
-          ./mvnw -B clean deploy -P release,all-natives -Dnative.classifier=macos-arm64 -DskipTests -DcentralBaseUrl=http://127.0.0.1:9 || true
+          ./mvnw -B clean deploy -P release,all-natives -Dnative.classifier=macos-arm64 -DskipTests "${SIGN_ARGS[@]}" -DcentralBaseUrl=http://127.0.0.1:9 || true
           test -f target/central-publishing/central-bundle.zip
           unzip -l target/central-publishing/central-bundle.zip
         env:
           DRY_RUN_VERSION: ${{ inputs.version }}
+          HAS_GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY != '' }}
           MAVEN_CENTRAL_USERNAME: dry-run
           MAVEN_CENTRAL_PASSWORD: dry-run
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
